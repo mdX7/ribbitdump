@@ -1,0 +1,2 @@
+add_subdirectory(ribbitdump)
+add_subdirectory(shared)
