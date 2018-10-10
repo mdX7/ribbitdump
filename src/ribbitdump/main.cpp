@@ -35,7 +35,7 @@ int main()
     sDiscordHook->Initialize();
     while (true)
     {
-        RibbitRequestData* cmd = new RibbitRequestData("summary", "", "", "", "");
+        RibbitRequestData* cmd = new RibbitRequestData("summary", "", "", 0, "");
         Requester req(downloadDir, "us.version.battle.net", "1119", cmd);
         delete cmd;
 

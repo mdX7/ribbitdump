@@ -12,11 +12,12 @@ public:
     Requester(std::string downloadDir, std::string host, std::string port, RibbitRequestData* cmd);
     ~Requester();
 
+    uint64 GetSeqn(std::stringstream& dataStream);
     void ReadHandler(boost::system::error_code const& ec, std::size_t transferredBytes);
     void ConnectHandler(boost::system::error_code const& ec);
     void ResolveHandler(boost::system::error_code const& ec, boost::asio::ip::tcp::resolver::iterator it);
     void SendCommand(RibbitRequestData& request);
-    uint32 ParseSummary(std::stringstream& dataStream);
+    uint64 ParseSummary(std::stringstream& dataStream);
 private:
     boost::asio::io_service _ioservice;
     boost::asio::ip::tcp::resolver _resolver{ _ioservice };

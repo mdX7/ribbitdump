@@ -20,6 +20,7 @@ public:
 
     bool RibbitEntryExists(std::string name, uint64 seqn, std::string flag);
     void AddNewRibbitEntry(std::string name, uint64 seqn, std::string flag);
+    void UpdateRibbitSeqn(std::string name, uint64 oldSeqn, uint64 newSeqn, std::string flag);
     void MarkRibbitEntryDownloaded(std::string name, uint64 seqn, std::string flag);
     std::queue<RibbitRequestData> GetUndownloadedList();
 private:

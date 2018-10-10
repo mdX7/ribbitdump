@@ -78,6 +78,27 @@ void MySQLConnection::AddNewRibbitEntry(std::string name, uint64 seqn, std::stri
         sDiscordHook->SendToDiscord("Ribbit ERROR", "MySQLConnection::AddNewRibbitEntry|mysql_query: An error occured! Check console for more info!");
     }
 }
+void MySQLConnection::UpdateRibbitSeqn(std::string name, uint64 oldSeqn, uint64 newSeqn, std::string flag)
+{
+    std::stringstream builder;
+    builder << "UPDATE `ribbit` SET "
+        << "`Seqn`=" << newSeqn
+        << " WHERE"
+        << " `Name`='" << name << "' AND"
+        << " `Seqn`=" << oldSeqn << " AND"
+        << " `Flag`='" << (flag == "version" ? "" : flag) << "' AND"
+        << " `Downloaded`=0";
+
+    std::stringstream discText;
+    discText << "**" << name << "**\nSeqn: " << newSeqn << "\n" << flag;
+
+    if (mysql_query(_con, builder.str().c_str()))
+    {
+        std::cout << "MySQLConnection::UpdateRibbitSeqn|mysql_query: Error occured: " << mysql_error(_con) << std::endl;
+        std::cout << "    Used Query: " << builder.str() << std::endl;
+        sDiscordHook->SendToDiscord("Ribbit ERROR", "MySQLConnection::UpdateRibbitSeqn|mysql_query: An error occured! Check console for more info!");
+    }
+}
 
 void MySQLConnection::MarkRibbitEntryDownloaded(std::string name, uint64 seqn, std::string flag)
 {
@@ -105,7 +126,7 @@ std::queue<RibbitRequestData> MySQLConnection::GetUndownloadedList()
 {
     std::queue<RibbitRequestData> q;
     std::stringstream builder;
-    builder << "SELECT `Name`, `Seqn`, `Flag` FROM `ribbit` WHERE `Downloaded`=0 AND `Seqn`<>0";
+    builder << "SELECT `Name`, `Seqn`, `Flag` FROM `ribbit` WHERE `Downloaded`=0";
 
     if (mysql_query(_con, builder.str().c_str()))
     {
@@ -135,7 +156,7 @@ std::queue<RibbitRequestData> MySQLConnection::GetUndownloadedList()
                     d.Product = row[i];
                     break;
                 case 1:
-                    d.Seqn = row[i];
+                    d.Seqn = std::stoull(row[i]);
                     break;
                 case 2:
                     d.Flag = row[i];

@@ -35,7 +35,19 @@ Requester::Requester(std::string downloadDir, std::string host, std::string port
     _ioservice.run();
 }
 
-uint32 Requester::ParseSummary(std::stringstream& dataStream)
+uint64 Requester::GetSeqn(std::stringstream& dataStream)
+{
+    uint32 seqn = -1;
+    std::string row;
+    for (int rowNum = 0; getline(dataStream, row, '\n'); rowNum++)
+    {
+        if (row[0] == '#' && row[3] == 's')
+            return std::stoull(row.c_str() + 2 + 1 + 4 + 1 + 1 + 1);
+    }
+    return 0;
+}
+
+uint64 Requester::ParseSummary(std::stringstream& dataStream)
 {
     uint64 seqn = -1;
     int dataRowNum = -1;
@@ -74,8 +86,8 @@ uint32 Requester::ParseSummary(std::stringstream& dataStream)
                     token.erase(std::remove(token.begin(), token.end(), '\r'), token.end());
                     if (colNames[colNum] == "Product")
                         reqDat.Product = token;
-                    else if (colNames[colNum] == "Seqn")
-                        reqDat.Seqn = token;
+                    else if (colNames[colNum] == "Seqn") // this MAY be different to the actual REAL seqn because blizzard does not update summary & rest at the same time
+                        reqDat.Seqn = std::stoull(token);
                     else if (colNames[colNum] == "Flags")
                         reqDat.Flag = token;
                     else
@@ -84,7 +96,7 @@ uint32 Requester::ParseSummary(std::stringstream& dataStream)
                         sDiscordHook->SendToDiscord("Ribbit ERROR", "**Requester::ParseSummary: DETECTED NEW COLUMN TYPE: '" + colNames[colNum] + "' PLEASE IMPLEMENT ME ASAP **");
                     }
                 }
-                sMySQLConnection->AddNewRibbitEntry(reqDat.Product, std::stoull(reqDat.Seqn), reqDat.Flag);
+                sMySQLConnection->AddNewRibbitEntry(reqDat.Product, reqDat.Seqn, reqDat.Flag);
             }
         }
 
@@ -107,11 +119,13 @@ void Requester::ReadHandler(boost::system::error_code const& ec, std::size_t tra
 
     if (transferredBytes == 0 && _currentPacket.str().size() > 10)
     {
-        std::string seqn = "";
+        uint64 realSeqn = 0;
         if (_currentCommand->Command == "summary")
-            seqn = std::to_string(ParseSummary(_currentPacket));
+            realSeqn = ParseSummary(_currentPacket);
         else
-            seqn = _currentCommand->Seqn;
+            realSeqn = GetSeqn(_currentPacket);
+
+        sMySQLConnection->UpdateRibbitSeqn(_currentCommand->Product, _currentCommand->Seqn, realSeqn, _currentCommand->Flag);
 
         std::stringstream pathStream;
         pathStream << _downloadDir << _currentCommand->Command;
@@ -130,13 +144,13 @@ void Requester::ReadHandler(boost::system::error_code const& ec, std::size_t tra
             pathStream << _currentCommand->Product;
         else
             pathStream << _currentCommand->Command << "-#";
-        pathStream << "-" << seqn << ".bmime";
+        pathStream << "-" << std::to_string(realSeqn) << ".bmime";
 
         std::ofstream ofs(pathStream.str(), std::ios::binary);
         ofs << _currentPacket.str();
         ofs.close();
         if (_currentCommand->Product != "")
-            sMySQLConnection->MarkRibbitEntryDownloaded(_currentCommand->Product, std::stoull(_currentCommand->Seqn), _currentCommand->Flag);
+            sMySQLConnection->MarkRibbitEntryDownloaded(_currentCommand->Product, realSeqn, _currentCommand->Flag);
 
         _socket.close();
     }
